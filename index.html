@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>30 ta Lugʻat — Flashcard App</title>
+  <style>
+    :root{
+      --bg:#0f172a;
+      --panel:#111827ee;
+      --card:#1f2937;
+      --text:#e5e7eb;
+      --muted:#94a3b8;
+      --accent:#22c55e;
+      --accent-2:#38bdf8;
+      --danger:#ef4444;
+      --yellow:#fbbf24;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      background: radial-gradient(1200px 700px at 80% -10%, #1e293b, transparent 60%),
+                  radial-gradient(900px 600px at -10% 10%, #0b3b4a, transparent 55%),
+                  var(--bg);
+      color:var(--text);
+      min-height:100svh; display:grid; place-items:center; padding:18px;
+    }
+    .app{ width:min(980px, 100%); display:grid; gap:16px; }
+    .topbar{ display:grid; gap:10px; grid-template-columns:1fr auto; align-items:center; background:var(--panel); border:1px solid #233; border-radius:16px; padding:14px 16px; backdrop-filter: blur(6px);}    
+    .title{font-weight:700; letter-spacing:.2px}
+    .controls{display:flex; flex-wrap:wrap; gap:8px}
+    button, .btn{
+      background:#0b1220; color:var(--text); border:1px solid #223244;
+      padding:10px 12px; border-radius:12px; cursor:pointer; font-weight:600;
+      transition:.15s transform ease, .15s background;
+    }
+    button:hover{transform:translateY(-1px)}
+    button:active{transform:translateY(0)}
+    button[disabled]{opacity:.5; cursor:not-allowed}
+    .primary{background:linear-gradient(135deg, #0ea5e9, #22c55e); border:none}
+    .danger{background:linear-gradient(135deg, #ef4444, #f59e0b); border:none}
+    .info{background:#0b213a; border-color:#21476b}
+    .toolbar{display:flex; gap:8px; flex-wrap:wrap}
+    .toolbar input[type="text"]{background:#0b1220; color:var(--text); border:1px solid #223244; outline:none; padding:10px 12px; border-radius:12px; min-width:200px;}
+    .toggle{display:flex; align-items:center; gap:8px}
+    .card{ 
+      user-select:none; 
+      background:linear-gradient(180deg, rgba(255,255,255,.02), transparent 40%), var(--card); 
+      border:1px solid #2a3342; 
+      border-radius:20px; 
+      padding:24px; 
+      min-height:280px; 
+      display:grid; 
+      place-items:center; 
+      text-align:center; 
+      position:relative; 
+      overflow:hidden; 
+      box-shadow: 0 10px 30px rgba(0,0,0,.35); 
+      cursor:pointer; 
+    }
+    .card .label{position:absolute; top:12px; right:12px; font-size:12px; color:var(--muted)}
+    .card .big{font-size:clamp(26px, 6vw, 44px); font-weight:800; letter-spacing:.3px; margin-bottom:10px;}
+    .card .forms{font-size:clamp(16px, 3vw, 20px); color:var(--muted); margin-top:15px;}
+    .card .forms div{margin:5px 0;}
+    .card .uz{font-size:clamp(20px, 4vw, 28px); color:var(--accent-2); margin-top:15px; font-weight:600;}
+    .hint{position:absolute; bottom:10px; left:0; right:0; text-align:center; color:var(--muted); font-size:12px}
+    .bottom{ display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap }
+    .progress{flex:1; height:10px; background:#0b1220; border:1px solid #223244; border-radius:999px; overflow:hidden}
+    .progress > i{display:block; height:100%; background:linear-gradient(90deg,var(--accent), var(--accent-2)); width:0}
+    .stack{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+    .stack .mini{ background:#0b1220; border:1px dashed #2a3b4a; border-radius:12px; padding:10px 12px; color:var(--muted); display:flex; justify-content:space-between; align-items:center; font-size:13px }
+    .mini b{color:var(--text)}
+    .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; background:#0b1220; border:1px solid #223244; padding:2px 6px; border-radius:6px}
+    .note{font-size:13px; color:var(--muted)}
+    .hidden{display:none !important;}
+    @media (max-width:720px){ .stack{grid-template-columns:1fr} }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <div>
+        <div class="title">BEGINNER MATERIALS • 30 ta lugʻat uchun flashcard</div>
+        <div class="note">Kartani bosib tarjimani ko‘ring · <span class="kbd">←/→</span> yoki <span class="kbd">A/D</span> — oldinga/ortga · <span class="kbd">Space</span> — ochish</div>
+      </div>
+      <div class="controls">
+        <button id="speak" class="info">🔊 O‘qib ber (US)</button>
+        <button id="voiceToggle" class="primary">Rejim: American</button>
+        <button id="autoPlay" class="danger">▶️ Avto-o‘qitish</button>
+        <button id="shuffle" class="primary">🔀 Shuffle</button>
+        <button id="reset" class="danger">♻️ Reset</button>
+        <button id="mode" class="primary">Rejim: Aralash</button>
+      </div>
+    </div>
+    <div class="toolbar">
+      <input id="search" type="text" placeholder="Qidirish: inglizcha yoki o‘zbekcha..." />
+      <label class="toggle"><input id="frontUZ" type="checkbox"> Oldida o‘zbekcha chiqsin</label>
+      <label class="toggle"><input id="autoFlip" type="checkbox"> Auto-flip (2s)</label>
+      <label class="toggle"><input id="learnedOnly" type="checkbox"> Faqat o‘rganilmagan</label>
+    </div>
+    <div id="card" class="card" tabindex="0">
+      <span class="label" id="idx"></span>
+      <div>
+        <div class="big front" id="front">Loading…</div>
+        <div class="forms front" id="frontForms"></div>
+        <div class="uz back hidden" id="back"></div>
+        <div class="forms back hidden" id="backForms"></div>
+      </div>
+      <div class="hint">Bosib tarjimani ko‘ring</div>
+    </div>
+    <div class="bottom">
+      <div class="progress"><i id="bar"></i></div>
+      <div class="stack">
+        <div class="mini">Holat: <b id="status">0 / 30</b></div>
+        <div class="mini">Belgilangan (o‘rganildi): <b id="learnedCount">0</b></div>
+      </div>
+      <div class="controls">
+        <button id="prev">⬅️ Oldingi</button>
+        <button id="flip">🔁 Och / Yop</button>
+        <button id="next">Keyingi ➡️</button>
+        <button id="mark">✅ O‘rganildi</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    const data = [
+      {en:"be", v1:"be", v2:"was/were", v3:"been", uz:"boʻlmoq"},
+      {en:"beat", v1:"beat", v2:"beat", v3:"beaten", uz:"urmoq"},
+      {en:"become", v1:"become", v2:"became", v3:"become", uz:"boʻlmoq, aylanmoq"},
+      {en:"begin", v1:"begin", v2:"began", v3:"begun", uz:"boshlamoq"},
+      {en:"bend", v1:"bend", v2:"bent", v3:"bent", uz:"egmoq, bukmoq"},
+      {en:"bite", v1:"bite", v2:"bit", v3:"bitten", uz:"tishlamoq"},
+      {en:"blow", v1:"blow", v2:"blew", v3:"blown", uz:"puflamoq, esmoq"},
+      {en:"break", v1:"break", v2:"broke", v3:"broken", uz:"sindirmoq, buzmoq"},
+      {en:"bring", v1:"bring", v2:"brought", v3:"brought", uz:"olib kelmoq"},
+      {en:"build", v1:"build", v2:"built", v3:"built", uz:"qurmoq"},
+      {en:"buy", v1:"buy", v2:"bought", v3:"bought", uz:"sotib olmoq"},
+      {en:"catch", v1:"catch", v2:"caught", v3:"caught", uz:"tutmoq, ushlamoq"},
+      {en:"choose", v1:"choose", v2:"chose", v3:"chosen", uz:"tanlamoq"},
+      {en:"come", v1:"come", v2:"came", v3:"come", uz:"kelmoq"},
+      {en:"cost", v1:"cost", v2:"cost", v3:"cost", uz:"turmoq (narx)"},
+      {en:"cut", v1:"cut", v2:"cut", v3:"cut", uz:"kesmoq"},
+      {en:"do", v1:"do", v2:"did", v3:"done", uz:"qilmoq"},
+      {en:"draw", v1:"draw", v2:"drew", v3:"drawn", uz:"chizmoq, tortmoq"},
+      {en:"drink", v1:"drink", v2:"drank", v3:"drunk", uz:"ichmoq"},
+      {en:"drive", v1:"drive", v2:"drove", v3:"driven", uz:"haydamoq"},
+      {en:"eat", v1:"eat", v2:"ate", v3:"eaten", uz:"yemoq"},
+      {en:"fall", v1:"fall", v2:"fell", v3:"fallen", uz:"yiqilmoq, tushmoq"},
+      {en:"feel", v1:"feel", v2:"felt", v3:"felt", uz:"his qilmoq"},
+      {en:"fight", v1:"fight", v2:"fought", v3:"fought", uz:"jang qilmoq, kurashmoq"},
+      {en:"find", v1:"find", v2:"found", v3:"found", uz:"topmoq"},
+      {en:"fly", v1:"fly", v2:"flew", v3:"flown", uz:"uchmoq"},
+      {en:"forget", v1:"forget", v2:"forgot", v3:"forgotten", uz:"unutmoq"},
+      {en:"forgive", v1:"forgive", v2:"forgave", v3:"forgiven", uz:"kechirmoq"},
+      {en:"get", v1:"get", v2:"got", v3:"gotten", uz:"olmoq, yetmoq"},
+      {en:"give", v1:"give", v2:"gave", v3:"given", uz:"bermoq"}
+    ];
+
+    let order = [...data.keys()];
+    let idx = 0; 
+    let showBack = false; 
+    let learned = new Set(JSON.parse(localStorage.getItem('flash.learned')||'[]'));
+    let sequentialMode = false;
+    let currentVoice = 'en-US';
+    let autoPlaying = false;
+
+    const elCard = document.getElementById('card');
+    const elFront = document.getElementById('front');
+    const elFrontForms = document.getElementById('frontForms');
+    const elBack = document.getElementById('back');
+    const elBackForms = document.getElementById('backForms');
+    const elIdx = document.getElementById('idx');
+    const elBar = document.getElementById('bar');
+    const elStatus = document.getElementById('status');
+    const elLearnedCount = document.getElementById('learnedCount');
+    const elSearch = document.getElementById('search');
+    const frontUZ = document.getElementById('frontUZ');
+    const autoFlip = document.getElementById('autoFlip');
+    const learnedOnly = document.getElementById('learnedOnly');
+
+    function progress(){ 
+      elStatus.textContent = `${idx+1} / ${order.length}`; 
+      elBar.style.width = ((idx+1)/order.length*100).toFixed(2)+"%"; 
+      elLearnedCount.textContent = learned.size; 
+      elIdx.textContent = `#${idx+1}`; 
+      document.getElementById('mark').textContent = learned.has(order[idx]) ? '❌ Oʻrganilgan emas' : '✅ Oʻrganildi'; 
+    }
+
+    function current(){ 
+      return data[order[idx]]; 
+    }
+
+    function render(){ 
+      const item = current(); 
+      
+      if (frontUZ.checked) {
+        // Oldida o'zbekcha
+        elFront.textContent = item.uz;
+        elFrontForms.innerHTML = `<div>V1: ${item.v1}</div><div>V2: ${item.v2}</div><div>V3: ${item.v3}</div>`;
+        
+        elBack.textContent = item.en;
+        elBackForms.innerHTML = `<div>Tarjima: ${item.uz}</div>`;
+      } else {
+        // Oldida inglizcha
+        elFront.textContent = item.en;
+        elFrontForms.innerHTML = `<div>V1: ${item.v1}</div><div>V2: ${item.v2}</div><div>V3: ${item.v3}</div>`;
+        
+        elBack.textContent = item.uz;
+        elBackForms.innerHTML = `<div>Tarjima: ${item.uz}</div>`;
+      }
+      
+      // Ko'rsatish/yashirish
+      document.querySelectorAll('.front').forEach(el => {
+        el.classList.toggle('hidden', showBack);
+      });
+      document.querySelectorAll('.back').forEach(el => {
+        el.classList.toggle('hidden', !showBack);
+      });
+      
+      progress(); 
+    }
+
+    function flip(force){ 
+      if(typeof force === 'boolean') {
+        showBack = force; 
+      } else {
+        showBack = !showBack; 
+      }
+      render(); 
+    }
+
+    function next(){ 
+      if(idx < order.length-1){
+        idx++; 
+        showBack = false; 
+        render();
+      } 
+    }
+
+    function prev(){ 
+      if(idx > 0){
+        idx--; 
+        showBack = false; 
+        render();
+      } 
+    }
+
+    function shuffleArray(arr){ 
+      for(let i = arr.length-1; i > 0; i--){ 
+        const j = Math.floor(Math.random()*(i+1)); 
+        [arr[i], arr[j]] = [arr[j], arr[i]]; 
+      } 
+    }
+
+    function rebuildOrder(){ 
+      const q = elSearch.value.trim().toLowerCase(); 
+      const showLearnedOnly = learnedOnly.checked;
+      
+      const pool = data.map((x,i) => ({i,x})).filter(({i,x}) => {
+        if (showLearnedOnly && learned.has(i)) return false;
+        if (q) return x.en.toLowerCase().includes(q) || x.uz.toLowerCase().includes(q);
+        return true;
+      });
+      
+      order = pool.map(o => o.i); 
+      idx = 0; 
+      showBack = false; 
+      render(); 
+    }
+
+    // Tugmalar
+    document.getElementById('flip').onclick = () => flip();
+    document.getElementById('next').onclick = () => next();
+    document.getElementById('prev').onclick = () => prev();
+    document.getElementById('shuffle').onclick = () => {
+      shuffleArray(order); 
+      idx = 0; 
+      showBack = false; 
+      render();
+    };
+    document.getElementById('reset').onclick = () => {
+      order = [...data.keys()]; 
+      if(!sequentialMode) shuffleArray(order); 
+      idx = 0; 
+      showBack = false; 
+      learned.clear(); 
+      localStorage.removeItem('flash.learned'); 
+      render();
+    };
+    document.getElementById('mark').onclick = () => {
+      const key = order[idx]; 
+      if(learned.has(key)) {
+        learned.delete(key); 
+      } else {
+        learned.add(key); 
+      }
+      localStorage.setItem('flash.learned', JSON.stringify([...learned])); 
+      progress();
+    };
+
+    // Rejim
+    document.getElementById('mode').onclick = () => {
+      sequentialMode = !sequentialMode;
+      if(sequentialMode){
+        order = [...data.keys()];
+        document.getElementById('mode').textContent = 'Rejim: Ketma-ket';
+      } else {
+        order = [...data.keys()];
+        shuffleArray(order);
+        document.getElementById('mode').textContent = 'Rejim: Aralash';
+      }
+      idx = 0; 
+      showBack = false; 
+      render();
+    };
+
+    // Ovoz rejimi
+    document.getElementById('voiceToggle').onclick = () => {
+      if(currentVoice === 'en-US'){
+        currentVoice = 'en-GB';
+        document.getElementById('voiceToggle').textContent = 'Rejim: British';
+        document.getElementById('speak').textContent = '🔊 Oʻqib ber (UK)';
+      } else {
+        currentVoice = 'en-US';
+        document.getElementById('voiceToggle').textContent = 'Rejim: American';
+        document.getElementById('speak').textContent = '🔊 Oʻqib ber (US)';
+      }
+    };
+
+    // Sozlamalar
+    elSearch.addEventListener('input', rebuildOrder);
+    frontUZ.addEventListener('change', () => {
+      showBack = false; 
+      render();
+    });
+    learnedOnly.addEventListener('change', rebuildOrder);
+
+    // Auto-flip
+    let autoTimer = null; 
+    autoFlip.addEventListener('change', () => { 
+      clearInterval(autoTimer); 
+      if(autoFlip.checked){ 
+        autoTimer = setInterval(() => flip(true), 2000);
+      } 
+    });
+
+    // Klaviatura
+    elCard.addEventListener('click', () => flip());
+    document.addEventListener('keydown', (e) => { 
+      if(e.code === 'Space'){
+        e.preventDefault();
+        flip();
+      } 
+      if(e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D'){
+        next();
+      } 
+      if(e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A'){
+        prev();
+      } 
+    });
+
+    // Ovoz bilan o'qish
+    const speakBtn = document.getElementById('speak');
+    speakBtn.addEventListener('click', () => { 
+      const item = current();
+      if (frontUZ.checked) {
+        // O'zbekcha oldida - inglizcha shakllarni o'qiydi
+        speakAllForms(item.v1, item.v2, item.v3, currentVoice);
+      } else {
+        // Inglizcha oldida - inglizcha shakllarni o'qiydi
+        speakAllForms(item.v1, item.v2, item.v3, currentVoice);
+      }
+    });
+
+    function speakWord(word, lang){
+      return new Promise(resolve => {
+        const u = new SpeechSynthesisUtterance(word);
+        u.lang = lang;
+        u.onend = resolve;
+        window.speechSynthesis.speak(u);
+      });
+    }
+
+    async function speakAllForms(v1, v2, v3, lang) {
+      await speakWord("V1:", lang);
+      await speakWord(v1, lang);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      await speakWord("V2:", lang);
+      await speakWord(v2, lang);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      await speakWord("V3:", lang);
+      await speakWord(v3, lang);
+    }
+
+    // Avto-o'qitish
+    async function autoPlayFunc(){
+      autoPlaying = true;
+      document.getElementById('autoPlay').textContent = '⏹️ Toʻxtatish';
+      
+      for(let i = idx; i < order.length && autoPlaying; i++){
+        const item = data[order[i]];
+        
+        for(let j = 0; j < 3 && autoPlaying; j++){
+          // Inglizcha shakllarni o'qiydi
+          await speakAllForms(item.v1, item.v2, item.v3, currentVoice);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Tarjimani o'qiydi
+          await speakWord(item.uz, 'uz-UZ');
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        
+        if(autoPlaying && i < order.length - 1) {
+          next();
+          await new Promise(resolve => setTimeout(resolve, 1500));
+        }
+      }
+      
+      autoPlaying = false;
+      document.getElementById('autoPlay').textContent = '▶️ Avto-oʻqitish';
+    }
+
+    document.getElementById('autoPlay').onclick = () => {
+      if(autoPlaying){
+        autoPlaying = false;
+        window.speechSynthesis.cancel();
+        document.getElementById('autoPlay').textContent = '▶️ Avto-oʻqitish';
+      } else {
+        autoPlayFunc();
+      }
+    };
+
+    // Dasturni ishga tushirish
+    shuffleArray(order);
+    render();
+  </script>
+</body>
+</html>
